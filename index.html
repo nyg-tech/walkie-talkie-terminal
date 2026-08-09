@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TELSIZ // terminal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg:#020603;
+    --panel:#04140a;
+    --panel-2:#031008;
+    --green:#3dff8e;
+    --green-bright:#a8ffd0;
+    --green-dim:#0e5230;
+    --green-mute:#175c34;
+    --red:#ff3b57;
+    --red-glow:rgba(255,59,87,0.55);
+    --amber:#ffc23d;
+    --amber-glow:rgba(255,194,61,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);}
+
+  body{
+    font-family:'JetBrains Mono', 'Courier New', monospace;
+    color:var(--green);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 14px;
+    position:relative;
+    overflow-x:hidden;
+  }
+
+  body::before{
+    content:'';
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,0.35) 3px
+    );
+    mix-blend-mode:multiply;
+    z-index:50;
+  }
+  body::after{
+    content:'';
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:radial-gradient(ellipse at 50% 0%, rgba(61,255,142,0.06), transparent 60%);
+    z-index:0;
+  }
+
+  .term{
+    width:100%;
+    max-width:460px;
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border:1px solid var(--green-dim);
+    border-radius:4px;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.6),
+      0 0 40px rgba(61,255,142,0.08),
+      inset 0 0 60px rgba(0,0,0,0.6);
+    position:relative;
+    z-index:1;
+  }
+
+  .term-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 12px;
+    border-bottom:1px solid var(--green-dim);
+    font-size:11px;
+    letter-spacing:2px;
+    color:var(--green-mute);
+    text-transform:uppercase;
+  }
+  .term-bar-right{display:flex;align-items:center;gap:10px;}
+  .term-dots{display:flex;gap:6px;}
+  .term-dots span{width:8px;height:8px;border-radius:50%;background:var(--green-dim);}
+  .gear-btn{
+    background:none;border:1px solid var(--green-dim);color:var(--green-mute);
+    width:22px;height:22px;border-radius:2px;cursor:pointer;
+    font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;
+    padding:0;
+  }
+  .gear-btn:hover{border-color:var(--green);color:var(--green);}
+
+  .term-body{padding:20px;}
+
+  .prompt{color:var(--green-mute);}
+  .glow{
+    color:var(--green-bright);
+    text-shadow:0 0 8px rgba(61,255,142,0.6), 0 0 2px rgba(61,255,142,0.8);
+  }
+
+  .ascii-title{
+    font-size:11px;
+    line-height:1.15;
+    white-space:pre;
+    color:var(--green);
+    text-shadow:0 0 6px rgba(61,255,142,0.5);
+    margin-bottom:14px;
+    overflow-x:auto;
+  }
+
+  .line{
+    font-size:14px;
+    margin-bottom:6px;
+    color:var(--green-mute);
+  }
+  .cursor{
+    display:inline-block;
+    width:8px;height:14px;
+    background:var(--green);
+    margin-left:4px;
+    vertical-align:middle;
+    animation:blink 1s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
+
+  .field-label{
+    font-size:12px;
+    color:var(--green-mute);
+    margin:16px 0 4px;
+    letter-spacing:1px;
+  }
+  .field-label::before{content:'# ';}
+
+  .t-input{
+    width:100%;
+    background:#000;
+    border:1px solid var(--green-dim);
+    color:var(--green-bright);
+    font-family:inherit;
+    font-size:15px;
+    padding:10px 12px;
+    border-radius:2px;
+    outline:none;
+  }
+  .t-input:focus{border-color:var(--green);box-shadow:0 0 8px rgba(61,255,142,0.25);}
+  .t-input::placeholder{color:var(--green-dim);}
+  .t-code{text-transform:uppercase;letter-spacing:4px;text-align:center;font-size:18px;}
+
+  .name-row{display:flex;gap:8px;}
+  .name-row .t-input{flex:1;}
+  .flag-pick-btn{
+    background:#000;border:1px solid var(--green-dim);color:var(--green-bright);
+    font-size:20px;width:44px;border-radius:2px;cursor:pointer;flex-shrink:0;
+  }
+  .flag-pick-btn:hover{border-color:var(--green);}
+
+  .t-btn{
+    width:100%;
+    background:#000;
+    border:1px solid var(--green);
+    color:var(--green-bright);
+    font-family:inherit;
+    font-size:14px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    padding:12px;
+    border-radius:2px;
+    cursor:pointer;
+    margin-top:14px;
+    position:relative;
+  }
+  .t-btn::before{content:'> ';}
+  .t-btn:hover{background:rgba(61,255,142,0.08);}
+  .t-btn:active{background:rgba(61,255,142,0.18);}
+  .t-btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .t-btn-row{display:flex;gap:8px;margin-top:14px;}
+  .t-btn-row .t-input{margin:0;}
+  .t-btn-row .t-btn{width:auto;flex-shrink:0;padding:0 16px;margin-top:0;}
+
+  .divider{
+    display:flex;align-items:center;gap:10px;
+    color:var(--green-mute);font-size:11px;letter-spacing:3px;
+    margin:20px 0 4px;
+  }
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--green-dim);}
+
+  .hint{font-size:11px;color:var(--green-mute);margin-top:14px;line-height:1.5;}
+
+  /* room screen */
+  .status-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;margin-bottom:4px;
+  }
+  .status-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 6px var(--green);
+    display:inline-block;margin-right:6px;
+  }
+  .status-dot.off{background:#333;box-shadow:none;}
+
+  .channel-box{
+    border:1px dashed var(--green-dim);
+    padding:12px;
+    margin:10px 0 16px;
+    border-radius:2px;
+    text-align:center;
+  }
+  .channel-code{
+    font-size:28px;
+    letter-spacing:6px;
+    color:var(--green-bright);
+    text-shadow:0 0 10px rgba(61,255,142,0.6);
+  }
+
+  .roster{
+    border-top:1px solid var(--green-dim);
+    padding-top:10px;
+    margin-bottom:16px;
+    max-height:150px;
+    overflow-y:auto;
+  }
+  .roster-row{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;
+    padding:4px 0;
+    color:var(--green-mute);
+  }
+  .roster-led{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--green-dim);
+    flex-shrink:0;
+  }
+  .roster-led.live{
+    background:var(--red);
+    box-shadow:0 0 8px var(--red-glow);
+    animation:pulse .6s infinite alternate;
+  }
+  @keyframes pulse{from{opacity:1}to{opacity:0.4}}
+  .roster-flag{font-size:14px;flex-shrink:0;}
+  .roster-name{flex:1;color:var(--green);}
+  .roster-tag{font-size:10px;color:var(--green-dim);}
+  .admin-badge{font-size:11px;margin-left:2px;}
+
+  /* pending join requests (admin only) */
+  .pending-box{
+    border:1px dashed var(--amber);
+    border-radius:2px;
+    padding:10px;
+    margin-bottom:16px;
+    background:rgba(255,194,61,0.05);
+  }
+  .pending-title{
+    font-size:11px;letter-spacing:1px;color:var(--amber);margin-bottom:8px;
+  }
+  .pending-title::before{content:'! ';}
+  .pending-row{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;padding:5px 0;color:var(--green-bright);
+  }
+  .pending-name{flex:1;}
+  .pending-actions{display:flex;gap:6px;}
+  .pending-btn{
+    background:#000;border:1px solid var(--green-dim);color:var(--green-mute);
+    font-family:inherit;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+    padding:5px 9px;border-radius:2px;cursor:pointer;
+  }
+  .pending-btn.accept{border-color:var(--green);color:var(--green-bright);}
+  .pending-btn.accept:hover{background:rgba(61,255,142,0.12);}
+  .pending-btn.reject{border-color:var(--red);color:var(--red);}
+  .pending-btn.reject:hover{background:rgba(255,59,87,0.12);}
+
+  .ptt{
+    width:100%;
+    padding:26px 12px;
+    background:#000;
+    border:2px solid var(--green);
+    color:var(--green-bright);
+    font-family:inherit;
+    font-size:16px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    border-radius:3px;
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+    text-align:center;
+    transition:background .05s, box-shadow .05s, border-color .05s;
+  }
+  .ptt::before{content:'[ ';color:var(--green-dim);}
+  .ptt::after{content:' ]';color:var(--green-dim);}
+  .ptt.active{
+    background:rgba(255,59,87,0.12);
+    border-color:var(--red);
+    color:#fff;
+    box-shadow:0 0 30px var(--red-glow), inset 0 0 20px rgba(255,59,87,0.2);
+  }
+
+  .tx-strip{
+    display:flex;gap:5px;justify-content:center;margin-top:12px;
+  }
+  .tx-strip span{width:16px;height:5px;background:var(--green-dim);}
+  .tx-strip span.on{background:var(--red);box-shadow:0 0 6px var(--red-glow);}
+
+  .leave-btn{
+    width:100%;
+    background:none;
+    border:1px solid var(--green-dim);
+    color:var(--green-mute);
+    font-family:inherit;
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    padding:9px;
+    border-radius:2px;
+    cursor:pointer;
+    margin-top:18px;
+  }
+  .leave-btn:hover{border-color:var(--red);color:var(--red);}
+
+  /* waiting screen */
+  .waiting-wrap{text-align:center;padding:14px 0 6px;}
+  .waiting-spin{
+    font-size:26px;margin:10px 0 16px;
+    animation:spin 1.4s linear infinite;display:inline-block;
+  }
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+  /* settings modal */
+  .modal-overlay{
+    position:absolute;inset:0;
+    background:rgba(0,4,1,0.88);
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:20px 16px;
+    z-index:20;
+    border-radius:4px;
+    overflow-y:auto;
+  }
+  .modal-box{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--green);
+    border-radius:3px;
+    padding:16px;
+    box-shadow:0 0 30px rgba(61,255,142,0.15);
+  }
+  .modal-title{
+    font-size:13px;letter-spacing:2px;color:var(--green-bright);
+    text-shadow:0 0 8px rgba(61,255,142,0.5);
+    margin-bottom:14px;text-transform:uppercase;
+  }
+  .modal-title::before{content:'$ ';color:var(--green-dim);}
+  .lang-toggle{display:flex;gap:8px;margin-top:6px;}
+  .opt-btn{
+    flex:1;background:#000;border:1px solid var(--green-dim);color:var(--green-mute);
+    font-family:inherit;font-size:12px;letter-spacing:1px;text-transform:uppercase;
+    padding:9px;border-radius:2px;cursor:pointer;
+  }
+  .opt-btn.sel{border-color:var(--green);color:var(--green-bright);background:rgba(61,255,142,0.08);}
+  .opt-btn:hover{border-color:var(--green);}
+
+  .flag-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:6px;
+  }
+  .flag-cell{
+    background:#000;border:1px solid var(--green-dim);color:var(--green-bright);
+    font-size:18px;padding:7px 0;border-radius:2px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .flag-cell.sel{border-color:var(--green);box-shadow:0 0 8px rgba(61,255,142,0.3);background:rgba(61,255,142,0.08);}
+  .flag-cell:hover{border-color:var(--green);}
+
+  .modal-close{
+    width:100%;margin-top:16px;
+    background:none;border:1px solid var(--green-dim);color:var(--green-mute);
+    font-family:inherit;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    padding:9px;border-radius:2px;cursor:pointer;
+  }
+  .modal-close:hover{border-color:var(--green);color:var(--green);}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script>
+(function(){
+  const root = document.getElementById('root');
+
+  const ADJ=['GECE','GOLGE','SESSIZ','KIRMIZI','SIFIR','KARANLIK','GIZLI','HIZLI'];
+  const NOUN=['KURT','FALCON','KOD','SINYAL','VIRUS','KOKPIT','PROTOKOL','KUKLA'];
+  function randCode(len){
+    const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s=''; for(let i=0;i<len;i++) s+=c[Math.floor(Math.random()*c.length)];
+    return s;
+  }
+  function randName(){ return ADJ[Math.floor(Math.random()*ADJ.length)]+'_'+NOUN[Math.floor(Math.random()*NOUN.length)]; }
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  // ---------- i18n ----------
+  const STRINGS = {
+    tr:{
+      subtitle:'tuşa bas, konuş, bırak.',
+      callsignLabel:'CALLSIGN (RUMUZ)',
+      flagLabel:'BAYRAK',
+      createBtn:'yeni kanal ac',
+      orDivider:'VEYA',
+      joinLabel:'KANAL KODU ILE BAGLAN',
+      joinBtn:'baglan',
+      hint1:'&gt; mikrofon izni istenecek.',
+      hint2:'&gt; kanalı açan kişi (host/admin) çevrimiçi kalmalı — o ayrılırsa kanal kapanır.',
+      hint3:'&gt; ses doğrudan tarayıcılar arası (WebRTC) akar, sinyalleşme için açık peerjs sunucusu kullanılır.',
+      hint4:'&gt; odaya katılım istekleri admin tarafından onaylanmalı.',
+      settingsTitle:'AYARLAR',
+      languageLabel:'DIL',
+      flagSettingLabel:'BAYRAGINIZ',
+      closeBtn:'kapat',
+      waitingTitle:'baglanti_istegi --gonderildi',
+      waitingMsg:'Admin onayı bekleniyor...',
+      cancelBtn:'iptal --istekten-vazgec',
+      statusConnected:'BAGLI',
+      statusConnecting:'BAGLANIYOR',
+      roleHost:'HOST/ADMIN',
+      roleJoiner:'UYE',
+      channelCodeLabel:'KANAL KODU',
+      participantsLabel:'KATILIMCILAR',
+      pendingRequestsLabel:'BEKLEYEN ISTEKLER',
+      acceptBtn:'kabul',
+      rejectBtn:'red',
+      waitingRosterMsg:'baglanti bekleniyor...',
+      pttIdle:'basili tut, konus',
+      pttOnAir:'yayinda... birak',
+      exitBtn:'exit --kanaldan-ayril',
+      you:'SEN',
+      tx:'TX',
+      adminBadgeTitle:'Admin',
+      alertMicDenied:'MIKROFON ERISIMI REDDEDILDI.',
+      alertCodeRequired:'KANAL KODU GEREKLI.',
+      alertIdUsed:'BU KANAL KODU ZATEN KULLANIMDA. BASKA BIR KOD DENE.',
+      alertNotFound:'KANAL BULUNAMADI. KODU KONTROL ET, HOST CEVRIMICI OLMALI.',
+      alertConnError:'BAGLANTI HATASI: ',
+      alertRejected:'ADMIN ISTEGINIZI REDDETTI.',
+      alertHostClosed:'HOST BAGLANTIYI KAPATTI, KANAL SONA ERDI.',
+      unknownErr:'bilinmiyor'
+    },
+    en:{
+      subtitle:'press the key, talk, release.',
+      callsignLabel:'CALLSIGN (NICKNAME)',
+      flagLabel:'FLAG',
+      createBtn:'create new channel',
+      orDivider:'OR',
+      joinLabel:'JOIN WITH CHANNEL CODE',
+      joinBtn:'connect',
+      hint1:'&gt; microphone permission will be requested.',
+      hint2:'&gt; the person who opened the channel (host/admin) must stay online — if they leave, the channel closes.',
+      hint3:'&gt; audio streams directly browser-to-browser (WebRTC), an open peerjs server is used for signaling.',
+      hint4:'&gt; join requests must be approved by the admin.',
+      settingsTitle:'SETTINGS',
+      languageLabel:'LANGUAGE',
+      flagSettingLabel:'YOUR FLAG',
+      closeBtn:'close',
+      waitingTitle:'connection_request --sent',
+      waitingMsg:'Waiting for admin approval...',
+      cancelBtn:'cancel --withdraw-request',
+      statusConnected:'CONNECTED',
+      statusConnecting:'CONNECTING',
+      roleHost:'HOST/ADMIN',
+      roleJoiner:'MEMBER',
+      channelCodeLabel:'CHANNEL CODE',
+      participantsLabel:'PARTICIPANTS',
+      pendingRequestsLabel:'PENDING REQUESTS',
+      acceptBtn:'accept',
+      rejectBtn:'reject',
+      waitingRosterMsg:'waiting for connections...',
+      pttIdle:'hold to talk',
+      pttOnAir:'on air... release',
+      exitBtn:'exit --leave-channel',
+      you:'YOU',
+      tx:'TX',
+      adminBadgeTitle:'Admin',
+      alertMicDenied:'MICROPHONE ACCESS DENIED.',
+      alertCodeRequired:'CHANNEL CODE REQUIRED.',
+      alertIdUsed:'THIS CHANNEL CODE IS ALREADY IN USE. TRY ANOTHER CODE.',
+      alertNotFound:'CHANNEL NOT FOUND. CHECK THE CODE, HOST MUST BE ONLINE.',
+      alertConnError:'CONNECTION ERROR: ',
+      alertRejected:'ADMIN REJECTED YOUR REQUEST.',
+      alertHostClosed:'HOST CLOSED THE CONNECTION, CHANNEL ENDED.',
+      unknownErr:'unknown'
+    }
+  };
+  function t(key){
+    const d = STRINGS[state.lang] || STRINGS.tr;
+    return d[key] !== undefined ? d[key] : (STRINGS.tr[key] !== undefined ? STRINGS.tr[key] : key);
+  }
+
+  const FLAGS = [
+    {code:'TR', emoji:'🇹🇷'}, {code:'US', emoji:'🇺🇸'}, {code:'GB', emoji:'🇬🇧'},
+    {code:'DE', emoji:'🇩🇪'}, {code:'FR', emoji:'🇫🇷'}, {code:'ES', emoji:'🇪🇸'},
+    {code:'IT', emoji:'🇮🇹'}, {code:'RU', emoji:'🇷🇺'}, {code:'JP', emoji:'🇯🇵'},
+    {code:'KR', emoji:'🇰🇷'}, {code:'CN', emoji:'🇨🇳'}, {code:'BR', emoji:'🇧🇷'},
+    {code:'IN', emoji:'🇮🇳'}, {code:'NL', emoji:'🇳🇱'}, {code:'SE', emoji:'🇸🇪'},
+    {code:'CA', emoji:'🇨🇦'}, {code:'AZ', emoji:'🇦🇿'}, {code:'SA', emoji:'🇸🇦'}
+  ];
+  function flagEmoji(code){
+    const f = FLAGS.find(x=>x.code===code);
+    return f ? f.emoji : '🌐';
+  }
+
+  const state={
+    screen:'landing',   // 'landing' | 'waiting' | 'room'
+    role:null,          // 'host' | 'joiner'
+    roomCode:'',
+    myId:'',
+    myName: randName(),
+    myFlag: 'TR',
+    lang: 'tr',
+    joinCodeInput:'',
+    connected:false,
+    pttActive:false,
+    participants:{},    // id -> {name, flag, isAdmin}
+    speaking:{},
+    pendingRequests:{},  // host only: id -> {name, flag, dataConn, call}
+    settingsOpen:false
+  };
+
+  let peer=null;
+  let localStream=null;
+  let audioCtx=null, destNode=null, micGain=null;
+  let hostAudioEl=null;             // host listens to the mixed bus
+  const hostConns={};               // host only: peerId -> {call, dataConn, srcNode}
+  let joinerCall=null, joinerDataConn=null, joinerAudioEl=null;
+
+  function beep(freq,dur){
+    try{
+      if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='square'; o.frequency.value=freq; g.gain.value=0.045;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
+      o.stop(audioCtx.currentTime+dur);
+    }catch(e){}
+  }
+
+  // ---------- host logic ----------
+  function hostBroadcastRoster(){
+    const full = Object.assign({}, state.participants, {[state.roomCode]:{name:state.myName, flag:state.myFlag, isAdmin:true}});
+    state.participants = full;
+    Object.values(hostConns).forEach(c=>{ if(c.dataConn && c.dataConn.open) c.dataConn.send({type:'roster', participants: full}); });
+    render();
+  }
+  function hostBroadcastSpeaking(){
+    Object.values(hostConns).forEach(c=>{ if(c.dataConn && c.dataConn.open) c.dataConn.send({type:'speaking_map', speaking: state.speaking}); });
+    render();
+  }
+
+  function hostAcceptRequest(id){
+    const req = state.pendingRequests[id];
+    if(!req) return;
+    state.participants[id] = {name:req.name, flag:req.flag, isAdmin:false};
+    if(!hostConns[id]) hostConns[id]={};
+    hostConns[id].dataConn = req.dataConn;
+    if(req.call){
+      req.call.answer(destNode.stream);
+      req.call.on('stream', (remoteStream)=>{
+        const src = audioCtx.createMediaStreamSource(remoteStream);
+        src.connect(destNode);
+        hostConns[id].call = req.call;
+        hostConns[id].srcNode = src;
+      });
+    }
+    if(req.dataConn && req.dataConn.open) req.dataConn.send({type:'join_accepted'});
+    delete state.pendingRequests[id];
+    hostBroadcastRoster();
+  }
+  function hostRejectRequest(id){
+    const req = state.pendingRequests[id];
+    if(!req) return;
+    if(req.dataConn && req.dataConn.open) req.dataConn.send({type:'join_rejected'});
+    try{ req.dataConn && req.dataConn.close(); }catch(e){}
+    try{ req.call && req.call.close(); }catch(e){}
+    delete state.pendingRequests[id];
+    render();
+  }
+
+  async function becomeHost(){
+    state.role='host';
+    state.myId=state.roomCode;
+
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    destNode = audioCtx.createMediaStreamDestination();
+    const micSource = audioCtx.createMediaStreamSource(localStream);
+    micGain = audioCtx.createGain();
+    micGain.gain.value = 0;
+    micSource.connect(micGain).connect(destNode);
+
+    hostAudioEl = document.createElement('audio');
+    hostAudioEl.autoplay = true;
+    hostAudioEl.style.display='none';
+    hostAudioEl.srcObject = destNode.stream;
+    document.body.appendChild(hostAudioEl);
+
+    peer = new Peer(state.roomCode, {debug:0});
+    peer.on('open', ()=>{
+      state.connected=true;
+      state.screen='room';
+      hostBroadcastRoster();
+    });
+    peer.on('connection', (conn)=>{
+      conn.on('open', ()=>{});
+      conn.on('data', (msg)=>{
+        if(msg.type==='hello'){
+          if(!state.pendingRequests[conn.peer]) state.pendingRequests[conn.peer]={};
+          state.pendingRequests[conn.peer].name = msg.name || 'ANONIM';
+          state.pendingRequests[conn.peer].flag = msg.flag || 'TR';
+          state.pendingRequests[conn.peer].dataConn = conn;
+          render();
+        } else if(msg.type==='speaking'){
+          if(state.participants[conn.peer]){
+            state.speaking[conn.peer] = !!msg.active;
+            hostBroadcastSpeaking();
+          }
+        }
+      });
+      conn.on('close', ()=>{
+        delete state.participants[conn.peer];
+        delete state.speaking[conn.peer];
+        delete state.pendingRequests[conn.peer];
+        delete hostConns[conn.peer];
+        hostBroadcastRoster();
+      });
+    });
+    peer.on('call', (call)=>{
+      if(!state.pendingRequests[call.peer]) state.pendingRequests[call.peer]={};
+      state.pendingRequests[call.peer].call = call;
+      render();
+    });
+    peer.on('error', handlePeerError);
+  }
+
+  // ---------- joiner logic ----------
+  async function becomeJoiner(){
+    state.role='joiner';
+    peer = new Peer(undefined, {debug:0});
+    peer.on('open', (id)=>{
+      state.myId=id;
+      joinerDataConn = peer.connect(state.roomCode, {metadata:{name:state.myName}});
+      joinerDataConn.on('open', ()=>{
+        joinerDataConn.send({type:'hello', name:state.myName, flag:state.myFlag});
+        state.screen='waiting';
+        render();
+      });
+      joinerDataConn.on('data', (msg)=>{
+        if(msg.type==='roster'){ state.participants = msg.participants; render(); }
+        else if(msg.type==='speaking_map'){ state.speaking = msg.speaking; render(); }
+        else if(msg.type==='join_accepted'){
+          state.connected=true;
+          state.screen='room';
+          render();
+        } else if(msg.type==='join_rejected'){
+          alert(t('alertRejected'));
+          resetToLanding();
+        }
+      });
+      joinerDataConn.on('close', ()=>{
+        const wasConnected = state.connected;
+        state.connected=false;
+        if(wasConnected){ alert(t('alertHostClosed')); }
+        resetToLanding();
+      });
+
+      joinerCall = peer.call(state.roomCode, localStream, {metadata:{name:state.myName}});
+      joinerCall.on('stream', (remoteStream)=>{
+        joinerAudioEl = document.createElement('audio');
+        joinerAudioEl.autoplay = true;
+        joinerAudioEl.style.display='none';
+        joinerAudioEl.srcObject = remoteStream;
+        document.body.appendChild(joinerAudioEl);
+      });
+    });
+    peer.on('error', handlePeerError);
+  }
+
+  function handlePeerError(err){
+    console.error(err);
+    if(err.type==='unavailable-id'){
+      alert(t('alertIdUsed'));
+      resetToLanding();
+    } else if(err.type==='peer-unavailable'){
+      alert(t('alertNotFound'));
+      resetToLanding();
+    } else {
+      alert(t('alertConnError')+(err.type||t('unknownErr')));
+    }
+  }
+
+  function resetToLanding(){
+    cleanup();
+    state.screen='landing';
+    state.role=null;
+    state.participants={};
+    state.speaking={};
+    state.pendingRequests={};
+    state.connected=false;
+    render();
+  }
+
+  function cleanup(){
+    try{ if(peer) peer.destroy(); }catch(e){}
+    peer=null;
+    if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+    if(hostAudioEl){ hostAudioEl.remove(); hostAudioEl=null; }
+    if(joinerAudioEl){ joinerAudioEl.remove(); joinerAudioEl=null; }
+    Object.keys(hostConns).forEach(k=>delete hostConns[k]);
+    if(audioCtx){ try{ audioCtx.close(); }catch(e){} audioCtx=null; }
+  }
+
+  // ---------- actions ----------
+  async function createRoom(){
+    if(!state.roomCode) state.roomCode = randCode(5);
+    try{
+      localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    }catch(e){ alert(t('alertMicDenied')); return; }
+    becomeHost();
+  }
+  async function joinRoom(){
+    const code = state.joinCodeInput.trim().toUpperCase();
+    if(!code){ alert(t('alertCodeRequired')); return; }
+    state.roomCode = code;
+    try{
+      localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      localStream.getAudioTracks().forEach(t=>t.enabled=false);
+    }catch(e){ alert(t('alertMicDenied')); return; }
+    becomeJoiner();
+  }
+
+  function leaveRoom(){
+    if(state.role==='host'){
+      Object.values(hostConns).forEach(c=>{ try{c.call&&c.call.close();}catch(e){} try{c.dataConn&&c.dataConn.close();}catch(e){} });
+      Object.values(state.pendingRequests).forEach(r=>{ try{r.call&&r.call.close();}catch(e){} try{r.dataConn&&r.dataConn.close();}catch(e){} });
+    } else if(state.role==='joiner'){
+      try{ joinerCall&&joinerCall.close(); }catch(e){}
+      try{ joinerDataConn&&joinerDataConn.close(); }catch(e){}
+    }
+    resetToLanding();
+  }
+
+  function pttDown(){
+    if(state.pttActive) return;
+    state.pttActive=true;
+    beep(760,0.07);
+    if(state.role==='host'){
+      micGain.gain.value=1;
+      state.speaking[state.roomCode]=true;
+      hostBroadcastSpeaking();
+    } else if(state.role==='joiner'){
+      localStream.getAudioTracks().forEach(t=>t.enabled=true);
+      state.speaking[state.myId]=true;
+      if(joinerDataConn && joinerDataConn.open) joinerDataConn.send({type:'speaking', active:true});
+    }
+    render();
+  }
+  function pttUp(){
+    if(!state.pttActive) return;
+    state.pttActive=false;
+    beep(380,0.08);
+    if(state.role==='host'){
+      micGain.gain.value=0;
+      state.speaking[state.roomCode]=false;
+      hostBroadcastSpeaking();
+    } else if(state.role==='joiner'){
+      localStream.getAudioTracks().forEach(t=>t.enabled=false);
+      state.speaking[state.myId]=false;
+      if(joinerDataConn && joinerDataConn.open) joinerDataConn.send({type:'speaking', active:false});
+    }
+    render();
+  }
+
+  function toggleSettings(){
+    state.settingsOpen = !state.settingsOpen;
+    render();
+  }
+  function setLang(l){
+    state.lang = l;
+    render();
+  }
+  function setFlag(code){
+    state.myFlag = code;
+    if(state.role==='host' && state.connected){
+      hostBroadcastRoster();
+    } else {
+      render();
+    }
+  }
+
+  // ---------- render helpers ----------
+  function settingsModalHTML(){
+    if(!state.settingsOpen) return '';
+    const langBtns = ['tr','en'].map(l=>{
+      const label = l==='tr' ? 'TÜRKÇE' : 'ENGLISH';
+      return `<button class="opt-btn ${state.lang===l?'sel':''}" data-lang="${l}">${label}</button>`;
+    }).join('');
+    const flagCells = FLAGS.map(f=>{
+      return `<button class="flag-cell ${state.myFlag===f.code?'sel':''}" data-flag="${f.code}" title="${f.code}">${f.emoji}</button>`;
+    }).join('');
+    return `
+      <div class="modal-overlay" id="settings-overlay">
+        <div class="modal-box">
+          <div class="modal-title">${t('settingsTitle')}</div>
+
+          <div class="field-label">${t('languageLabel')}</div>
+          <div class="lang-toggle">${langBtns}</div>
+
+          <div class="field-label">${t('flagSettingLabel')}</div>
+          <div class="flag-grid">${flagCells}</div>
+
+          <button id="btn-settings-close" class="modal-close">$ ${t('closeBtn')}</button>
+        </div>
+      </div>
+    `;
+  }
+  function attachSettingsHandlers(){
+    const overlay = root.querySelector('#settings-overlay');
+    if(!overlay) return;
+    overlay.querySelectorAll('[data-lang]').forEach(btn=>{
+      btn.addEventListener('click', ()=> setLang(btn.getAttribute('data-lang')));
+    });
+    overlay.querySelectorAll('[data-flag]').forEach(btn=>{
+      btn.addEventListener('click', ()=> setFlag(btn.getAttribute('data-flag')));
+    });
+    const closeBtn = root.querySelector('#btn-settings-close');
+    if(closeBtn) closeBtn.addEventListener('click', toggleSettings);
+  }
+  function gearButtonHTML(){
+    return `<button id="btn-gear" class="gear-btn" title="${t('settingsTitle')}">⚙</button>`;
+  }
+  function attachGearHandler(){
+    const gear = root.querySelector('#btn-gear');
+    if(gear) gear.addEventListener('click', toggleSettings);
+  }
+
+  // ---------- render ----------
+  function render(){
+    if(state.screen==='landing') renderLanding();
+    else if(state.screen==='waiting') renderWaiting();
+    else renderRoom();
+  }
+
+  function renderLanding(){
+    root.innerHTML = `
+      <div class="term">
+        <div class="term-bar">
+          <span>telsiz@term:~</span>
+          <div class="term-bar-right">
+            ${gearButtonHTML()}
+            <div class="term-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <div class="term-body">
+<div class="ascii-title">████████╗██╗  ██╗███████╗
+╚══██╔══╝╚██╗██╔╝╚══███╔╝
+   ██║    ╚███╔╝   ███╔╝
+   ██║    ██╔██╗  ███╔╝
+   ██║   ██╔╝ ██╗███████╗
+   ╚═╝   ╚═╝  ╚═╝╚══════╝</div>
+          <div class="line"><span class="prompt">$</span> encrypted_voice_channel --init<span class="cursor"></span></div>
+          <div class="line" style="margin-top:10px;color:var(--green-dim);">${t('subtitle')}</div>
+
+          <div class="field-label">${t('callsignLabel')}</div>
+          <div class="name-row">
+            <input id="in-name" class="t-input" maxlength="16" value="${escapeHtml(state.myName)}" />
+            <button id="btn-flag-quick" class="flag-pick-btn" title="${t('flagLabel')}">${flagEmoji(state.myFlag)}</button>
+          </div>
+
+          <button id="btn-create" class="t-btn">${t('createBtn')}</button>
+
+          <div class="divider">${t('orDivider')}</div>
+
+          <div class="field-label">${t('joinLabel')}</div>
+          <div class="t-btn-row">
+            <input id="in-code" class="t-input t-code" maxlength="6" placeholder="XXXXX" />
+            <button id="btn-join" class="t-btn">${t('joinBtn')}</button>
+          </div>
+
+          <div class="hint">
+            ${t('hint1')}<br/>
+            ${t('hint2')}<br/>
+            ${t('hint3')}<br/>
+            ${t('hint4')}
+          </div>
+        </div>
+        ${settingsModalHTML()}
+      </div>
+    `;
+    root.querySelector('#in-name').addEventListener('input', e=>{ state.myName = e.target.value || randName(); });
+    root.querySelector('#btn-create').addEventListener('click', createRoom);
+    root.querySelector('#in-code').addEventListener('input', e=>{ state.joinCodeInput = e.target.value; });
+    root.querySelector('#btn-join').addEventListener('click', joinRoom);
+    root.querySelector('#btn-flag-quick').addEventListener('click', toggleSettings);
+    attachGearHandler();
+    attachSettingsHandlers();
+  }
+
+  function renderWaiting(){
+    root.innerHTML = `
+      <div class="term">
+        <div class="term-bar">
+          <span>telsiz@term:~/kanal</span>
+          <div class="term-bar-right">
+            ${gearButtonHTML()}
+            <div class="term-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <div class="term-body">
+          <div class="line"><span class="prompt">$</span> ${t('waitingTitle')}<span class="cursor"></span></div>
+          <div class="waiting-wrap">
+            <div class="waiting-spin">◍</div>
+            <div class="line" style="color:var(--green-dim);">${t('waitingMsg')}</div>
+            <div class="channel-box">
+              <div class="roster-tag">${t('channelCodeLabel')}</div>
+              <div class="channel-code glow">${escapeHtml(state.roomCode)}</div>
+            </div>
+          </div>
+          <button id="btn-cancel" class="leave-btn">$ ${t('cancelBtn')}</button>
+        </div>
+        ${settingsModalHTML()}
+      </div>
+    `;
+    root.querySelector('#btn-cancel').addEventListener('click', leaveRoom);
+    attachGearHandler();
+    attachSettingsHandlers();
+  }
+
+  function renderRoom(){
+    const ids = Object.keys(state.participants);
+    const rows = ids.map(id=>{
+      const p = state.participants[id];
+      const live = !!state.speaking[id];
+      const isMe = id===state.myId || (state.role==='host' && id===state.roomCode);
+      const crown = p.isAdmin ? ` <span class="admin-badge" title="${t('adminBadgeTitle')}">👑</span>` : '';
+      return `<div class="roster-row">
+        <span class="roster-led ${live?'live':''}"></span>
+        <span class="roster-flag">${flagEmoji(p.flag)}</span>
+        <span class="roster-name">${escapeHtml(p.name)}${crown}${isMe?` <span class="roster-tag">(${t('you')})</span>`:''}</span>
+        <span class="roster-tag">${live?t('tx'):''}</span>
+      </div>`;
+    }).join('') || `<div class="roster-row"><span class="roster-tag">${t('waitingRosterMsg')}</span></div>`;
+
+    const pendingIds = Object.keys(state.pendingRequests).filter(id=>state.pendingRequests[id].name);
+    const pendingHTML = (state.role==='host' && pendingIds.length>0) ? `
+      <div class="pending-box">
+        <div class="pending-title">${t('pendingRequestsLabel')} (${pendingIds.length})</div>
+        ${pendingIds.map(id=>{
+          const r = state.pendingRequests[id];
+          return `<div class="pending-row">
+            <span class="roster-flag">${flagEmoji(r.flag)}</span>
+            <span class="pending-name">${escapeHtml(r.name)}</span>
+            <div class="pending-actions">
+              <button class="pending-btn accept" data-accept="${id}">${t('acceptBtn')}</button>
+              <button class="pending-btn reject" data-reject="${id}">${t('rejectBtn')}</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    ` : '';
+
+    root.innerHTML = `
+      <div class="term">
+        <div class="term-bar">
+          <span>telsiz@term:~/kanal</span>
+          <div class="term-bar-right">
+            ${gearButtonHTML()}
+            <div class="term-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <div class="term-body">
+          <div class="status-row">
+            <span><span class="status-dot ${state.connected?'':'off'}"></span>${state.connected?t('statusConnected'):t('statusConnecting')}</span>
+            <span class="roster-tag">${state.role==='host'?t('roleHost'):t('roleJoiner')}</span>
+          </div>
+          <div class="channel-box">
+            <div class="roster-tag">${t('channelCodeLabel')}</div>
+            <div class="channel-code glow">${escapeHtml(state.roomCode)}</div>
+          </div>
+
+          ${pendingHTML}
+
+          <div class="field-label">${t('participantsLabel')} (${ids.length})</div>
+          <div class="roster">${rows}</div>
+
+          <button id="btn-ptt" class="ptt ${state.pttActive?'active':''}">${state.pttActive?t('pttOnAir'):t('pttIdle')}</button>
+          <div class="tx-strip">${Array(10).fill(0).map((_,i)=>`<span class="${state.pttActive?'on':''}"></span>`).join('')}</div>
+
+          <button id="btn-leave" class="leave-btn">$ ${t('exitBtn')}</button>
+        </div>
+        ${settingsModalHTML()}
+      </div>
+    `;
+
+    const btn = root.querySelector('#btn-ptt');
+    const down=(e)=>{ e.preventDefault(); pttDown(); };
+    const up=(e)=>{ e.preventDefault(); pttUp(); };
+    btn.addEventListener('mousedown', down);
+    btn.addEventListener('touchstart', down, {passive:false});
+    btn.addEventListener('mouseup', up);
+    btn.addEventListener('mouseleave', up);
+    btn.addEventListener('touchend', up);
+    btn.addEventListener('touchcancel', up);
+    root.querySelector('#btn-leave').addEventListener('click', leaveRoom);
+
+    root.querySelectorAll('[data-accept]').forEach(b=>{
+      b.addEventListener('click', ()=> hostAcceptRequest(b.getAttribute('data-accept')));
+    });
+    root.querySelectorAll('[data-reject]').forEach(b=>{
+      b.addEventListener('click', ()=> hostRejectRequest(b.getAttribute('data-reject')));
+    });
+
+    attachGearHandler();
+    attachSettingsHandlers();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
